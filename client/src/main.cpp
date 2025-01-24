@@ -1,60 +1,87 @@
-#include <unistd.h>
 #include <iostream>
-#include <vector>
-#include <queue>
-#include <thread>
-#include "../include/lib/windowService.hpp"
-#include "../include/lib/keyboardService.hpp"
-#include "../include/lib/tetrisGameService.hpp"
+#include <string>
+#include <SDL2/SDL.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
-#define TETRIS_BOARD_TOP_LEFT_Y 2
-#define TETRIS_BOARD_TOP_LEFT_X 10
-#define TETRIS_BOARD_WIDTH 16
-#define TETRIS_BOARD_HEIGHT 16
-#define FPS 60
+constexpr int PORT = 5000;
 
+bool connectToServer(int& serverSocket) {
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        std::cerr << "Failed to create socket.\n";
+        return false;
+    }
 
-#define BLOCK_FILLED 1
+    sockaddr_in serverAddr{};
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-int main()
-{
-const double frameTime = 1 / (double)FPS * 1e3; // ms
+    if (connect(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cerr << "Failed to connect to server.\n";
+        close(serverSocket);
+        return false;
+    }
 
-    TetrisBoard* tetrisBoard = new TetrisBoard(TETRIS_BOARD_HEIGHT, std::vector<int>(TETRIS_BOARD_WIDTH, 0));
+    return true;
+}
 
-    KeyboardService keyboardService = KeyboardService();
-    WindowService windowService = WindowService();
-    TetrisGameService tetrisGameService = TetrisGameService(tetrisBoard);
+void clientGameLoop(int serverSocket) {
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window* window = SDL_CreateWindow("Tetris Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 800, SDL_WINDOW_SHOWN);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    windowService.registerStyle(BLOCK_FILLED, "█");
-
-    std::thread t1(&KeyboardService::run, keyboardService);
-
-    for (;;)
-    {
-        std::queue<char> keys = keyboardService.getKeys();
-        tetrisGameService.accept(&keys);
-
-        windowService.addComponent(tetrisBoard, TETRIS_BOARD_TOP_LEFT_Y, TETRIS_BOARD_TOP_LEFT_X);
-
-        if (tetrisGameService.getGameState() == TetrisGameState::Gameover) {
-            windowService.addComponent("Game Over", TETRIS_BOARD_TOP_LEFT_Y + TETRIS_BOARD_HEIGHT + 2, TETRIS_BOARD_TOP_LEFT_X);
-            windowService.addComponent("Press any key to exit..", TETRIS_BOARD_TOP_LEFT_Y + TETRIS_BOARD_HEIGHT + 3, TETRIS_BOARD_TOP_LEFT_X);
-            windowService.render();
+    char buffer[1024];
+    while (true) {
+        // Receive game state from server
+        int bytesReceived = recv(serverSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) {
+            std::cerr << "Disconnected from server.\n";
             break;
         }
 
-        windowService.render();
-        usleep(frameTime * 1e3); // us
+        buffer[bytesReceived] = '\0';
+        std::string gameState(buffer);
+
+        // Render the received game state (you can enhance this logic)
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        // Parse and display the board (example visualization)
+        int y = 0;
+        for (char c : gameState) {
+            if (c == '\n') {
+                ++y;
+                continue;
+            }
+
+            int x = (&c - &gameState[0]) % 10; // Example for grid width 10
+            if (c == '1') {
+                SDL_Rect block = {x * 40, y * 40, 40, 40};
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                SDL_RenderFillRect(renderer, &block);
+            }
+        }
+
+        SDL_RenderPresent(renderer);
+
+        SDL_Delay(33); // Simulate ~30 FPS
     }
 
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+}
 
+int main() {
+    int serverSocket;
+    if (!connectToServer(serverSocket)) {
+        return -1;
+    }
 
-    keyboardService.dispose();
+    clientGameLoop(serverSocket);
 
-    // std::cout << "Press any key to exit..\n";
-    t1.join();
-
+    close(serverSocket);
     return 0;
-
 }
