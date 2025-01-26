@@ -17,8 +17,6 @@ void runGameLogic(Game& game, bool& running) {
 }
 
 std::mutex inputMutex;
-
-std::map<int, bool> buttonStates;
 std::mutex buttonMutex;
 
 // Wrap handleInput calls with a mutex
@@ -28,8 +26,10 @@ void handleGameInput(Game& game, const std::string& command) {
 }
 
 void handleMouseClick(Game& game, int x, int y) {
-    std::lock_guard<std::mutex> lock(buttonMutex);
+    buttonMutex.lock();
+    std::cout << "Coordinates:" << x + ", " << y << std::endl;
     game.handleMouseClick(x, y);
+    buttonMutex.unlock();
 }
 
 int main() {
@@ -121,33 +121,18 @@ int main() {
                 int x, y;
                 SDL_GetMouseState(&x, &y);
 
-                std::lock_guard<std::mutex> lock(buttonMutex);  // Lock to ensure thread-safety
+                // Determine which window received the event
+                Uint32 clickedWindowID = SDL_GetWindowID(SDL_GetWindowFromID(event.button.windowID));
 
-                if (event.type == SDL_MOUSEBUTTONDOWN) {
-                    // Only process the click if it was not already processed
-                    if (!buttonStates[event.button.button]) {
-                        buttonStates[event.button.button] = true;
-
-                        // Handle click for game1 and game2 based on the window positions
-                        int window1X, window1Y, window2X, window2Y;
-                        SDL_GetWindowPosition(game1.getWindow(), &window1X, &window1Y);
-                        SDL_GetWindowPosition(game2.getWindow(), &window2X, &window2Y);
-
-                        // Game 1 window click
-                        if (x >= window1X && x < window1X + 500 && y >= window1Y && y < window1Y + 600) {
-                            std::cout << "Mouse clicked at: " << x << ", " << y << std::endl;
-                            handleMouseClick(game1, x, y);
-                        }
-                        // Game 2 window click
-                        else if (x >= window2X && x < window2X + 500 && y >= window2Y && y < window2Y + 600) {
-                            handleMouseClick(game2, x, y);
-                        }
-                    }
+                // Process the click for Game 1
+                if (clickedWindowID == SDL_GetWindowID(game1.getWindow())) {
+                    std::cout << "Game1 handle click" << std::endl;
+                    handleMouseClick(game1, event.button.x, event.button.y);
                 }
-
-                if (event.type == SDL_MOUSEBUTTONUP) {
-                    // Reset the button state on release
-                    buttonStates[event.button.button] = false;
+                // Process the click for Game 2
+                else if (clickedWindowID == SDL_GetWindowID(game2.getWindow())) {
+                    std::cout << "Game2 handle click" << std::endl;
+                    handleMouseClick(game2, event.button.x, event.button.y);
                 }
             }
         }

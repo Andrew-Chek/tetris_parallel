@@ -217,13 +217,17 @@ void Game::handleMouseClick(int x, int y) {
             restartGame(); // Restart the game if the button is clicked
         }
     } else if (!paused) {
+        std::cout << "Coordinates:" << x << ", " << y << std::endl;
         // Check if the mouse click is inside the pause button's rectangle
         int SCORE_AREA_WIDTH = 200;
         int SCORE_AREA_X = WINDOW_WIDTH - SCORE_AREA_WIDTH;
         SDL_Rect pauseButtonRect = {SCORE_AREA_X + 30, 150, 140, 50};
 
+        std::cout << "Pause button coordinates:" << pauseButtonRect.x << ", " << pauseButtonRect.y << std::endl;
+
         if (x >= pauseButtonRect.x && x <= pauseButtonRect.x + pauseButtonRect.w &&
             y >= pauseButtonRect.y && y <= pauseButtonRect.y + pauseButtonRect.h) {
+            std::cout << "I'm here" << std::endl;
             togglePause(); // Pause the game
         }
     } else {
@@ -300,6 +304,7 @@ void Game::renderRestartButton() {
 }
 
 void Game::renderPauseOverlay() {
+    std::cout << "Im in render pause overlay" << std::endl;
     // Semi-transparent overlay
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150); 
     SDL_Rect overlayRect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
@@ -340,7 +345,13 @@ void Game::renderPauseOverlay() {
 }
 
 void Game::togglePause() {
+    std::cout << "Im here as well!!!!!!!!!!!!!!!" << std::endl;
+    std::cout << paused << std::endl;
     paused = !paused;
+    std::cout << paused << std::endl;
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);  // Black background
+    SDL_RenderClear(renderer);
     if (paused) {
         // Display "Paused" overlay
         renderPauseOverlay();
@@ -348,6 +359,8 @@ void Game::togglePause() {
         // Resume game, continue rendering and updating
         render();
     }
+
+    SDL_RenderPresent(renderer); 
 }
 // Check for game over condition during tetromino falling logic
 void Game::checkGameOver() {
