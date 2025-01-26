@@ -2,7 +2,6 @@
 
 Tetromino::Tetromino(TetrominoType type, const std::vector<std::vector<int>>& shape, const Position& pos)
     : type(type), shape(shape), position(pos) {
-    // Initialize Tetromino as needed
 }
 
 const std::vector<std::vector<int>>& Tetromino::getShape() const {
@@ -15,10 +14,6 @@ const Position& Tetromino::getPosition() const {
 
 TetrominoType Tetromino::getType() const {
     return type;
-}
-
-void Tetromino::setPosition(const Position& pos) {
-    position = pos;
 }
 
 void Tetromino::move(int dx, int dy) {

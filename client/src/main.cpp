@@ -5,31 +5,26 @@
 #include <chrono>
 #include <map>
 
-// Mutex for rendering
 std::mutex renderMutex;
 
-// Wrapper to handle each game instance logic
 void runGameLogic(Game& game, bool& running) {
     while (running && !game.getGameOver()) {
-        game.update();  // Update game logic
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
+        game.update();
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 }
 
 std::mutex inputMutex;
 std::mutex buttonMutex;
 
-// Wrap handleInput calls with a mutex
 void handleGameInput(Game& game, const std::string& command) {
     std::lock_guard<std::mutex> lock(inputMutex);
     game.handleInput(command);
 }
 
 void handleMouseClick(Game& game, int x, int y) {
-    buttonMutex.lock();
-    std::cout << "Coordinates:" << x + ", " << y << std::endl;
+    std::lock_guard<std::mutex> lock(buttonMutex);
     game.handleMouseClick(x, y);
-    buttonMutex.unlock();
 }
 
 int main() {
@@ -38,49 +33,70 @@ int main() {
         return 1;
     }
 
-    // Create SDL window and renderer
-    SDL_Window* window = SDL_CreateWindow("Two Player Tetris", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
-    if (!window) {
-        std::cerr << "Failed to create SDL window: " << SDL_GetError() << std::endl;
+    SDL_Window* mainWindow = SDL_CreateWindow("Two Player Tetris", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_SHOWN);
+    if (!mainWindow) {
+        std::cerr << "Failed to create SDL main window: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
+    SDL_Renderer* mainRenderer = SDL_CreateRenderer(mainWindow, -1, SDL_RENDERER_ACCELERATED);
+    if (!mainRenderer) {
         std::cerr << "Failed to create SDL renderer: " << SDL_GetError() << std::endl;
-        SDL_DestroyWindow(window);
+        SDL_DestroyWindow(mainWindow);
         SDL_Quit();
         return 1;
     }
 
-    // Initialize two games
     Game game1;
     Game game2;
 
     if (!game1.initialize() || !game2.initialize()) {
         std::cerr << "Failed to initialize one or both game instances." << std::endl;
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
+        SDL_DestroyRenderer(mainRenderer);
+        SDL_DestroyWindow(mainWindow);
         SDL_Quit();
         return 1;
     }
 
     bool running = true;
+    bool game1Running = true;
+    bool game2Running = true;
+
     SDL_Event event;
 
-    // Start game logic in separate threads
-    std::thread game1Thread(runGameLogic, std::ref(game1), std::ref(running));
-    std::thread game2Thread(runGameLogic, std::ref(game2), std::ref(running));
+    std::thread game1Thread(runGameLogic, std::ref(game1), std::ref(game1Running));
+    std::thread game2Thread(runGameLogic, std::ref(game2), std::ref(game2Running));
 
     while (running) {
-        // Handle events
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
+                game1Running = false;
+                game2Running = false;
+            } else if (event.type == SDL_WINDOWEVENT) {
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                    Uint32 closedWindowID = event.window.windowID;
+
+                    if (closedWindowID == SDL_GetWindowID(game1.getWindow())) {
+                        std::cout << "Game1 window closed." << std::endl;
+                        game1Running = false;
+                        SDL_DestroyWindow(game1.getWindow());
+                    }
+                    else if (closedWindowID == SDL_GetWindowID(game2.getWindow())) {
+                        std::cout << "Game2 window closed." << std::endl;
+                        game2Running = false;
+                        SDL_DestroyWindow(game2.getWindow());
+                    }
+                    else if (closedWindowID == SDL_GetWindowID(mainWindow)) {
+                        std::cout << "Main window closed." << std::endl;
+                        running = false;
+                        game1Running = false;
+                        game2Running = false;
+                    }
+                }
             }
 
-            // Route events to the appropriate game instance
             if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
                     case SDLK_w:
@@ -116,51 +132,33 @@ int main() {
                         break;
                 }
             }
-
-            if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
-                int x, y;
-                SDL_GetMouseState(&x, &y);
-
-                // Determine which window received the event
-                Uint32 clickedWindowID = SDL_GetWindowID(SDL_GetWindowFromID(event.button.windowID));
-
-                // Process the click for Game 1
-                if (clickedWindowID == SDL_GetWindowID(game1.getWindow())) {
-                    std::cout << "Game1 handle click" << std::endl;
-                    handleMouseClick(game1, event.button.x, event.button.y);
-                }
-                // Process the click for Game 2
-                else if (clickedWindowID == SDL_GetWindowID(game2.getWindow())) {
-                    std::cout << "Game2 handle click" << std::endl;
-                    handleMouseClick(game2, event.button.x, event.button.y);
-                }
-            }
         }
 
-        // Render games
         renderMutex.lock();
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);  // Clear screen
-        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(mainRenderer, 0, 0, 0, 255);
+        SDL_RenderClear(mainRenderer);
 
-        game1.render();
-        game2.render();
+        if (game1Running) game1.render();
+        if (game2Running) game2.render();
 
-        SDL_RenderPresent(renderer);
+        SDL_RenderPresent(mainRenderer);
         renderMutex.unlock();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
+        if (!game1Running && !game2Running) {
+            running = false;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
 
-    // Wait for threads to finish
-    game1Thread.join();
-    game2Thread.join();
+    if (game1Running) game1Thread.join();
+    if (game2Running) game2Thread.join();
 
-    // Clean up
     game1.cleanup();
     game2.cleanup();
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    SDL_DestroyRenderer(mainRenderer);
+    SDL_DestroyWindow(mainWindow);
     SDL_Quit();
 
     return 0;

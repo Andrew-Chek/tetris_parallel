@@ -20,10 +20,12 @@ private:
     bool gameOver;
     Uint32 lastTick;
     const Uint32 tickInterval = 500;
+    const Uint32 LOCK_DELAY = 100;
     int score;
     bool restartButtonClicked;
     SDL_Rect restartButtonRect;
     bool paused;
+    Uint32 lockStartTime = 0;
 
 public:
     Game();
@@ -43,16 +45,12 @@ public:
     void renderGameOverScreen();
     void restartGame();
     void renderRestartButton();
-    void checkGameOver();
     void togglePause();
     void renderText(const std::string& text, TTF_Font* font, int x, int y);
     void update();
     void run(const std::vector<std::string>& commands);
-    void updateBoard(const std::string& serializedBoard);
     void cleanup();
     void gameLoop();
-    void setGameOver(bool flag);
-    bool isGameActive();
 };
 
-#endif // GAME_H
+#endif
