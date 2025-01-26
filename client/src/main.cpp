@@ -132,6 +132,25 @@ int main() {
                         break;
                 }
             }
+
+            if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+
+                // Determine which window received the event
+                Uint32 clickedWindowID = SDL_GetWindowID(SDL_GetWindowFromID(event.button.windowID));
+
+                // Process the click for Game 1
+                if (clickedWindowID == SDL_GetWindowID(game1.getWindow())) {
+                    std::cout << "Game1 handle click" << std::endl;
+                    handleMouseClick(game1, event.button.x, event.button.y);
+                }
+                // Process the click for Game 2
+                else if (clickedWindowID == SDL_GetWindowID(game2.getWindow())) {
+                    std::cout << "Game2 handle click" << std::endl;
+                    handleMouseClick(game2, event.button.x, event.button.y);
+                }
+            }
         }
 
         renderMutex.lock();
