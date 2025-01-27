@@ -12,11 +12,11 @@ std::mutex buttonMutex;
 void runGameLogic(Game& game, bool& running, bool& gameOver) {
     while (running) {
         if (game.getGameOver()) {
-            gameOver = true; // Set the game over flag for this game
-            break; // Stop the loop for this game
+            gameOver = true;
+            break;
         }
 
-        game.update();  // Update game logic
+        game.update(); 
         std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
     }
 }
@@ -137,9 +137,8 @@ int main() {
                         handleGameInput(game2, "Pause");
                         break;
 
-                    case SDLK_r: // 'R' to reset both games
+                    case SDLK_r:
                         if (game1Over && game2Over) {
-                            // Reset game states
                             game1.cleanup();
                             game2.cleanup();
 
@@ -149,7 +148,6 @@ int main() {
                             game1Over = false;
                             game2Over = false;
 
-                            // Join old threads
                             game1Thread.join();
                             game2Thread.join();
 
@@ -161,7 +159,7 @@ int main() {
                         }
                         break;
 
-                    case SDLK_q: // 'Q' to quit
+                    case SDLK_q:
                         running = false;
                         game1Running = false;
                         game2Running = false;

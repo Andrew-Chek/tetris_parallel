@@ -134,7 +134,7 @@ void Game::render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     if (paused) {
-            renderPauseOverlay(); // Only render the pause overlay if paused
+            renderPauseOverlay();
             return;
         }
 
@@ -369,19 +369,6 @@ void Game::update(){
         lastTick = currentTick;
     }
 
-}
-
-void Game::run(const std::vector<std::string>& commands) {
-    lastTick = SDL_GetTicks();
-    for(const auto& command : commands){
-        if (gameOver || quit){
-            break;
-        }
-        handleInput(command);
-        update();
-        render();
-        SDL_Delay(16);
-    }
 }
 
 void Game::cleanup() {
