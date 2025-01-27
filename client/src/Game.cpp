@@ -99,6 +99,8 @@ void Game::handleInput(const std::string& command) {
         int count = board.clearLines();
         calculateScore(count);
         spawnTetromino();
+    } else if (command == "Pause"){
+        togglePause();
     }
 }
 
@@ -126,6 +128,13 @@ SDL_Color Game::getTetrominoColor(TetrominoType type) {
 void Game::render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
+    if (paused) {
+            renderPauseOverlay(); // Only render the pause overlay if paused
+            return;
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
 
     if (gameOver) {
         renderGameOverScreen();
@@ -187,10 +196,10 @@ void Game::render() {
 
     renderText("Score: " + std::to_string(score), font, SCORE_AREA_X + (SCORE_AREA_WIDTH / 2) - 50, SCORE_Y);
 
-    SDL_Rect pauseButtonRect = {SCORE_AREA_X + (SCORE_AREA_WIDTH - 140) / 2, SCORE_Y + 100, 140, 50};
+    SDL_Rect pauseButtonRect = {SCORE_AREA_X + (SCORE_AREA_WIDTH - 140) / 2, SCORE_Y + 100, 150, 50};
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
     SDL_RenderFillRect(renderer, &pauseButtonRect);
-    renderText("Pause", font, pauseButtonRect.x + 25, pauseButtonRect.y + 10);
+    renderText("Pause: P/Q", font, pauseButtonRect.x + 20, pauseButtonRect.y + 10);
 
     SDL_RenderPresent(renderer);
 }
@@ -200,26 +209,6 @@ void Game::handleMouseClick(int x, int y) {
         if (x >= restartButtonRect.x && x <= restartButtonRect.x + restartButtonRect.w &&
             y >= restartButtonRect.y && y <= restartButtonRect.y + restartButtonRect.h) {
             restartGame();
-        }
-    } else if (!paused) {
-        std::cout << "Coordinates:" << x << ", " << y << std::endl;
-        int SCORE_AREA_WIDTH = 200;
-        int SCORE_AREA_X = WINDOW_WIDTH - SCORE_AREA_WIDTH;
-        SDL_Rect pauseButtonRect = {SCORE_AREA_X + 30, 150, 140, 50};
-
-        std::cout << "Pause button coordinates:" << pauseButtonRect.x << ", " << pauseButtonRect.y << std::endl;
-
-        if (x >= pauseButtonRect.x && x <= pauseButtonRect.x + pauseButtonRect.w &&
-            y >= pauseButtonRect.y && y <= pauseButtonRect.y + pauseButtonRect.h) {
-            std::cout << "I'm here" << std::endl;
-            togglePause();
-        }
-    } else {
-        SDL_Rect resumeButtonRect = {(WINDOW_WIDTH - 200) / 2, (WINDOW_HEIGHT - 50) / 2, 200, 50};
-
-        if (x >= resumeButtonRect.x && x <= resumeButtonRect.x + resumeButtonRect.w &&
-            y >= resumeButtonRect.y && y <= resumeButtonRect.y + resumeButtonRect.h) {
-            togglePause();
         }
     }
 }
@@ -273,7 +262,6 @@ void Game::renderRestartButton() {
 }
 
 void Game::renderPauseOverlay() {
-    std::cout << "Im in render pause overlay" << std::endl;
     
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150); 
     SDL_Rect overlayRect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
@@ -314,7 +302,7 @@ void Game::renderPauseOverlay() {
 }
 
 void Game::togglePause() {
-    std::cout << "Im here as well!!!!!!!!!!!!!!!" << std::endl;
+    std::cout << "Im here as well" << std::endl;
     std::cout << paused << std::endl;
     paused = !paused;
     std::cout << paused << std::endl;
@@ -358,7 +346,7 @@ void Game::renderText(const std::string& text, TTF_Font* font, int x, int y) {
 }
 
 void Game::update(){
-    if(gameOver) return;
+    if(gameOver || paused) return;
 
     Uint32 currentTick = SDL_GetTicks();
     
