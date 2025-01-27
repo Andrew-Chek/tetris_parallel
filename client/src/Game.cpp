@@ -238,8 +238,9 @@ void Game::renderGameOverScreen() {
     }
 
     // Render score text
+    SDL_Color scoreTextColor = {60, 179, 113, 255};
     std::string scoreText = "Your score is: " + std::to_string(score);
-    textSurface = TTF_RenderText_Solid(font, scoreText.c_str(), textColor);
+    textSurface = TTF_RenderText_Solid(font, scoreText.c_str(), scoreTextColor);
     if (textSurface) {
         SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
         SDL_Rect textRect = {(WINDOW_WIDTH - textSurface->w) / 2, (WINDOW_HEIGHT - textSurface->h) / 2, textSurface->w, textSurface->h};
