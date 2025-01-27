@@ -15,17 +15,6 @@ const std::vector<std::vector<int>>& Board::getGrid() const {
     return grid;
 }
 
-std::string Board::serializeBoard() const {
-    std::string state;
-    for (const auto& row : grid) {
-        for (int cell : row) {
-            state += std::to_string(cell) + " ";
-        }
-        state += "\n";
-    }
-    return state;
-}
-
 bool Board::checkCollision(const Tetromino& tetromino, int offsetX, int offsetY) const {
     const auto& shape = tetromino.getShape();
     const auto& pos = tetromino.getPosition();

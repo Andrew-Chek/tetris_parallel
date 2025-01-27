@@ -14,7 +14,6 @@ public:
 
     const std::vector<std::vector<int>>& getGrid() const;
 
-    std::string serializeBoard() const;
     bool checkCollision(const Tetromino& tetromino, int offsetX, int offsetY) const;
     void mergeTetromino(const Tetromino& tetromino);
     int clearLines();

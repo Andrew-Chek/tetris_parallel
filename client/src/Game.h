@@ -22,8 +22,6 @@ private:
     const Uint32 tickInterval = 500;
     const Uint32 LOCK_DELAY = 100;
     int score;
-    bool restartButtonClicked;
-    SDL_Rect restartButtonRect;
     bool paused;
     Uint32 lockStartTime = 0;
 
@@ -36,21 +34,19 @@ public:
     bool initialize();
     void spawnTetromino();
     void handleInput(const std::string& command);
-    std::string serializeBoard() const;
     SDL_Color getTetrominoColor(TetrominoType type);
     void calculateScore(int count);
     void render();
     void renderPauseOverlay();
-    void handleMouseClick(int x, int y);
     void renderGameOverScreen();
     void restartGame();
-    void renderRestartButton();
     void togglePause();
     void renderText(const std::string& text, TTF_Font* font, int x, int y);
     void update();
     void run(const std::vector<std::string>& commands);
     void cleanup();
     void gameLoop();
+    void setGameOver(bool flag);
 };
 
 #endif

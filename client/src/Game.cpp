@@ -15,10 +15,8 @@ Game::Game()
       quit(false),
       gameOver(false),
       score(0),
-      restartButtonClicked(false),
       paused(false),
       lastTick(0) {
-      restartButtonRect = {200, 300, 200, 50};
 }
 
 Game::~Game() {
@@ -28,7 +26,13 @@ Game::~Game() {
     SDL_Quit();
 }
 
+void Game::setGameOver(bool flag) {
+    gameOver = flag;
+}
+
 bool Game::initialize() {
+    gameOver = false;
+    board.clear();
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
         return false;
@@ -50,7 +54,7 @@ bool Game::initialize() {
         std::cerr << "Renderer creation failed: " << SDL_GetError() << std::endl;
         return false;
     }
-
+    
     spawnTetromino();
     return true;
 }
@@ -70,7 +74,12 @@ void Game::spawnTetromino() {
 }
 
 void Game::handleInput(const std::string& command) {
-    if (gameOver) return;
+    if (gameOver) {
+        if (command == "RESTART") {
+            restartGame();
+        }
+        return;
+    }
 
     if (command == "LEFT") {
         if (!board.checkCollision(*currentTetromino, -1, 0)) {
@@ -106,10 +115,6 @@ void Game::handleInput(const std::string& command) {
 
 void Game::calculateScore(int count) {
     score += count * 15;
-}
-
-std::string Game::serializeBoard() const {
-    return board.serializeBoard();
 }
 
 SDL_Color Game::getTetrominoColor(TetrominoType type) {
@@ -199,38 +204,52 @@ void Game::render() {
     SDL_Rect pauseButtonRect = {SCORE_AREA_X + (SCORE_AREA_WIDTH - 140) / 2, SCORE_Y + 100, 150, 50};
     SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
     SDL_RenderFillRect(renderer, &pauseButtonRect);
-    renderText("Pause: P/Q", font, pauseButtonRect.x + 20, pauseButtonRect.y + 10);
+    renderText("Pause: P/E", font, pauseButtonRect.x + 20, pauseButtonRect.y + 10);
 
+    TTF_CloseFont(font);
     SDL_RenderPresent(renderer);
-}
-
-void Game::handleMouseClick(int x, int y) {
-    if (gameOver) {
-        if (x >= restartButtonRect.x && x <= restartButtonRect.x + restartButtonRect.w &&
-            y >= restartButtonRect.y && y <= restartButtonRect.y + restartButtonRect.h) {
-            restartGame();
-        }
-    }
 }
 
 void Game::renderGameOverScreen() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    // Create a semi-transparent overlay
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
     SDL_Rect overlayRect = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
     SDL_RenderFillRect(renderer, &overlayRect);
 
+    // Load the font
     TTF_Font* font = TTF_OpenFont("../assets/Roboto-Thin.ttf", 48);
+    if (!font) {
+        std::cerr << "Failed to load font: " << TTF_GetError() << std::endl;
+        return;
+    }
+
+    // Render "Game Over" text
     SDL_Color textColor = {255, 0, 0, 255};
     SDL_Surface* textSurface = TTF_RenderText_Solid(font, "Game Over", textColor);
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    SDL_Rect textRect = {(WINDOW_WIDTH - textSurface->w) / 2, (WINDOW_HEIGHT - textSurface->h) / 3, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
+    if (textSurface) {
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_Rect textRect = {(WINDOW_WIDTH - textSurface->w) / 2, (WINDOW_HEIGHT - textSurface->h) / 3, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
 
-    renderRestartButton();
+    // Render score text
+    std::string scoreText = "Your score is: " + std::to_string(score);
+    textSurface = TTF_RenderText_Solid(font, scoreText.c_str(), textColor);
+    if (textSurface) {
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_Rect textRect = {(WINDOW_WIDTH - textSurface->w) / 2, (WINDOW_HEIGHT - textSurface->h) / 2, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
+
+    // Clean up font
+    TTF_CloseFont(font);
 }
 
 void Game::restartGame() {
@@ -242,23 +261,6 @@ void Game::restartGame() {
     spawnTetromino();
 
     gameLoop();
-}
-
-void Game::renderRestartButton() {
-    restartButtonRect = { (WINDOW_WIDTH - 200) / 2, WINDOW_HEIGHT / 2 + 50, 200, 50 };
-
-    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-    SDL_RenderFillRect(renderer, &restartButtonRect);
-
-    TTF_Font* font = TTF_OpenFont("../assets/Roboto-Thin.ttf", 24);
-    SDL_Color textColor = {255, 255, 255, 255};
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font, "Restart Game", textColor);
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    SDL_Rect textRect = {(WINDOW_WIDTH - textSurface->w) / 2, WINDOW_HEIGHT / 2 + 60, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
-
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
 }
 
 void Game::renderPauseOverlay() {
@@ -302,10 +304,7 @@ void Game::renderPauseOverlay() {
 }
 
 void Game::togglePause() {
-    std::cout << "Im here as well" << std::endl;
-    std::cout << paused << std::endl;
     paused = !paused;
-    std::cout << paused << std::endl;
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -395,6 +394,15 @@ void Game::cleanup() {
         SDL_DestroyWindow(window);
         window = nullptr;
     }
+    gameOver = false;
+    window = nullptr;
+    renderer = nullptr;
+    currentTetromino = nullptr;
+    quit = false;
+    gameOver = false;
+    score = 0;
+    paused = false;
+    lastTick = 0;
 
     SDL_Quit();
 }
@@ -421,10 +429,7 @@ void Game::gameLoop() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 quit = true;
-            } 
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                handleMouseClick(event.button.x, event.button.y);
-            } 
+            }
             else if (event.type == SDL_KEYDOWN) {
                 if (event.key.keysym.sym == SDLK_LEFT) {
                     handleInput("LEFT");
@@ -436,6 +441,8 @@ void Game::gameLoop() {
                     handleInput("ROTATE");
                 } else if (event.key.keysym.sym == SDLK_SPACE) {
                     handleInput("SPACE");
+                } else if(event.key.keysym.sym = SDLK_r) {
+                    handleInput("RESTART");
                 }
             }
         }
